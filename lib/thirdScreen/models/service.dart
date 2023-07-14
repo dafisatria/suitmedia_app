@@ -4,7 +4,7 @@ import 'package:suitmedia_app/thirdScreen/models/user_model.dart';
 
 class MyService {
   late Dio _dio;
-  List<UserModel> user = [];
+  // List<UserModel> user = [];
   Future<void> init() async {
     _dio = Dio();
   }
@@ -12,14 +12,14 @@ class MyService {
   MyService() {
     init();
   }
-  Future<List<UserModel>> getUser() async {
+  Future<List<UserModel>> getUser({required int page}) async {
     try {
-      String url = 'https://reqres.in/api/users?page=2';
+      String url = 'https://reqres.in/api/users?page=$page';
       final response = await _dio.get(url);
       if (response.statusCode == 200) {
         final List data = response.data['data'];
         debugPrint(response.data['data'].toString());
-        user = data.map((e) => UserModel.fromJson(e)).toList();
+        final user = data.map((e) => UserModel.fromJson(e)).toList();
         return user;
       } else {
         throw 'get informations failed';

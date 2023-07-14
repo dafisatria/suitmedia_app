@@ -14,19 +14,47 @@ class ThirdScreen extends StatefulWidget {
 
 class _ThirdScreenState extends State<ThirdScreen> {
   final MyService service = MyService();
-  Future getUser() async {
-    try {
-      await service.getUser();
-      setState(() {});
-    } catch (e) {
-      Text(e.toString());
+  List<UserModel> data = [];
+  int currentPage = 1;
+  ScrollController scrollController = ScrollController();
+  bool isFetchingData = false;
+
+  Future<void> loadMoreData() async {
+    if (!isFetchingData) {
+      setState(() {
+        isFetchingData = true;
+      });
+      try {
+        final newData = await service.getUser(page: currentPage);
+        setState(() {
+          data.addAll(newData);
+          currentPage++;
+          isFetchingData = false;
+        });
+      } catch (e) {
+        print(e);
+        setState(() {
+          isFetchingData = false;
+        });
+      }
     }
   }
 
   @override
   void initState() {
-    getUser();
     super.initState();
+    service.getUser(page: currentPage).then((newData) {
+      setState(() {
+        data.addAll(newData);
+        currentPage++;
+      });
+      scrollController.addListener(() {
+        if (scrollController.position.pixels ==
+            scrollController.position.maxScrollExtent) {
+          loadMoreData();
+        }
+      });
+    });
   }
 
   @override
@@ -62,29 +90,37 @@ class _ThirdScreenState extends State<ThirdScreen> {
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.only(left: 21, top: 15, right: 21),
+        padding: const EdgeInsets.only(left: 21, right: 21),
         child: ListView.separated(
-            itemBuilder: (context, index) {
-              return InkWell(
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: NetworkImage(service.user[index].avatar!),
-                  ),
-                  title: Text(
-                      '${service.user[index].firstName!} ${service.user[index].lastName!}'),
-                  subtitle: Text(service.user[index].email!),
-                ),
-                onTap: () {
-                  Navigator.pushReplacementNamed(context, '/second-screen',
-                      arguments: UserName(
-                          username:
-                              '${service.user[index].firstName!} ${service.user[index].lastName!}',
-                          name: args.name));
-                },
+          controller: scrollController,
+          itemCount: data.length + 1,
+          itemBuilder: (context, index) {
+            if (index == data.length) {
+              return const Center(
+                child: CircularProgressIndicator(),
               );
-            },
-            separatorBuilder: (context, index) => const Divider(),
-            itemCount: service.user.length),
+            }
+            final item = data[index];
+            return InkWell(
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundImage: NetworkImage(item.avatar!),
+                ),
+                title: Text('${item.firstName!} ${item.lastName!}'),
+                subtitle: Text(item.email!),
+              ),
+              onTap: () {
+                Navigator.pushReplacementNamed(context, '/second-screen',
+                    arguments: UserName(
+                        username: '${item.firstName!} ${item.lastName!}',
+                        name: args.name));
+              },
+            );
+          },
+          separatorBuilder: (context, index) => const Divider(
+            height: 25,
+          ),
+        ),
       ),
     );
   }
